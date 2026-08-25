@@ -55,12 +55,29 @@ PNG（3× 高清）、SVG 矢量图、PDF（A4）、Markdown 代码块。
 
 ## 使用
 
+要求 **Node.js 18+**。`node_modules` 不随 git 仓库保存，克隆 / 下载源码后需先重建依赖，再启动应用：
+
 ```bash
+# 1. 克隆或解压源码后，安装依赖（重建 node_modules）
 npm install
+
+# 2. 启动应用
 npm start
 ```
 
-要求 Node.js 18+。
+> **离线环境**：`npm install` 需要一次网络访问下载依赖。装完后所有依赖（Electron、Vue 3、Naive UI、Mermaid）都在本地 `node_modules`，之后完全离线可用。已有 `node_modules` 时可直接 `npm start` 启动，无需重复安装。
+
+### 从已有 node_modules 直接启动
+
+若当前目录已安装过依赖（或从别处拷贝了 `node_modules`），跳过安装直接启动：
+
+```bash
+npm start
+```
+
+### 构建 / 打包
+
+打包为独立安装程序（electron-builder）暂未配置，需要时可再补充。
 
 ### 快捷键
 
@@ -83,8 +100,10 @@ npm start
 ## 项目结构
 
 ```
+.gitignore              git 忽略规则（node_modules/ 等不入库）
 main.js                 Electron 主进程（窗口、文件对话框、导出写盘）
 preload.js              上下文隔离桥（window.api）
+package.json            依赖声明与启动脚本（npm install / npm start）
 renderer/
   index.html            界面骨架
   css/visio.css         Visio 风格样式
@@ -97,6 +116,8 @@ renderer/
   js/export.js          PNG / SVG / PDF / Markdown 导出
   js/app.js             主控制器（功能区、拖放、文件、快捷键、草稿）
 ```
+
+> 版本管理：项目使用 git，`node_modules/` 已被 `.gitignore` 忽略，克隆后执行 `npm install` 重建依赖。
 
 ## 贡献
 
