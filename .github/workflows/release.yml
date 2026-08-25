@@ -13,9 +13,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            script: npm run build:win
+            # 注意：不要用 npm run build:win（其 -c.electronDist 指向本机目录，CI 上不存在）
+            build_cmd: npx electron-builder --win --publish never
           - os: ubuntu-latest
-            script: npm run build:linux
+            build_cmd: npx electron-builder --linux --publish never
     runs-on: ${{ matrix.os }}
     steps:
       - name: 检出代码
@@ -30,7 +31,7 @@ jobs:
         run: npm install
 
       - name: 构建安装包
-        run: ${{ matrix.script }}
+        run: ${{ matrix.build_cmd }}
 
       - name: 上传构建产物（Artifact）
         uses: actions/upload-artifact@v4
