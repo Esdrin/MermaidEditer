@@ -1118,7 +1118,7 @@ ME.Canvas = (function () {
       if (s) lines.push('    linkStyle ' + i + ' ' + s);
     });
     if (model.nodes.length) {
-      lines.push('%% 自由画布布局（mermaid 注释，不影响渲染）');
+      lines.push('%% MermaidEditor FreeView');
       model.nodes.forEach((n) => lines.push('%% pos:' + n.name + ':' + Math.round(n.x) + ',' + Math.round(n.y)));
     }
     selfEdit = true;
