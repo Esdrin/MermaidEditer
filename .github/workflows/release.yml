@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# GitHub Releases 需要写入权限（创建/更新 Release）
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
