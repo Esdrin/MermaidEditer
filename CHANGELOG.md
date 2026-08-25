@@ -2,6 +2,19 @@
 
 本项目的所有重要变更均记录在此文件中。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.0] - 2026-08-26
+
+### 新增
+
+- **支持多开**：可同时运行多个 MermaidEditor 实例，各自独立编辑文件（移除单实例锁）
+- **双击 .mmd 文件打开**：安装后注册 `.mmd` / `.mermaid` 文件关联，双击文件自动用 MermaidEditor 打开（Windows / macOS / Linux）
+- **命令行打开**：`MermaidEditor xxx.mmd` 直接打开指定文件
+
+### 变更
+
+- 画布导出源码的布局注释改为 `%% MermaidEditor FreeView` 品牌标识（不影响解析，旧文件兼容）
+- 提交作者信息统一为 Esdrin1181
+
 ## [1.1.0] - 2026-08-25
 
 ### 新增
