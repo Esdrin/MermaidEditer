@@ -48,6 +48,23 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
+      - name: 检出代码（读取 CHANGELOG）
+        uses: actions/checkout@v4
+
+      - name: 从 CHANGELOG 提取当前版本说明
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # 提取 "## [版本号]" 章节（到下一个 "## [" 为止）
+          awk -v ver="[$VERSION]" '
+            $0 ~ "^## \\[" { if (found) exit; if (index($0, ver) > 0) found=1; next }
+            found { print }
+          ' CHANGELOG.md > release-body.md
+          # 若未匹配到版本章节，回退为整个 CHANGELOG
+          if [ ! -s release-body.md ]; then cat CHANGELOG.md > release-body.md; fi
+          echo "=== release body 预览 ==="
+          head -20 release-body.md
+
       - name: 下载所有构建产物
         uses: actions/download-artifact@v4
         with:
@@ -56,8 +73,8 @@ jobs:
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release-body.md
           files: |
             artifacts/**/*.exe
             artifacts/**/*.AppImage
             artifacts/**/*.deb
-          generate_release_notes: true
