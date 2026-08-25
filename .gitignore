@@ -2,5 +2,6 @@ node_modules/
 dist/
 out/
 build/
+build-out/
 release/
 *.log

@@ -80,22 +80,40 @@ npm start
 使用 [electron-builder](https://www.electron.build/) 打包为各平台安装程序：
 
 ```bash
-# Windows 安装包（NSIS，x64 → release/ 目录）
+# Windows 安装包（NSIS，x64 → build-out/ 目录）
 npm run build:win
 
-# Linux 安装包（AppImage + deb → release/ 目录）
+# Linux 安装包（AppImage + deb → build-out/ 目录，需在 Linux 系统上运行）
 npm run build:linux
 
-# 同时构建 Windows 与 Linux
+# 同时构建 Windows 与 Linux（本机 Windows 上 Linux 部分不可用）
 npm run build:all
 ```
 
 > 说明：
-> - 打包产物输出到 `release/` 目录（已在 `.gitignore` 中忽略，不入库）
-> - Windows 安装包：`MermaidEditor Setup 1.0.0.exe`（NSIS 安装向导）
-> - Linux 产物：`MermaidEditor-1.0.0.AppImage`（免安装直接运行）+ `.deb`（Debian/Ubuntu 安装包）
-> - 建议在对应系统上构建（Windows 上构建 Windows 包、Linux 上构建 Linux 包）；交叉构建 Linux 包可能需要额外工具链
+> - 打包产物输出到 `build-out/` 目录（已在 `.gitignore` 中忽略，不入库）
+> - Windows 安装包：`MermaidEditor Setup <版本>.exe`（NSIS 安装向导）
+> - Linux 产物：`MermaidEditor-<版本>.AppImage`（免安装直接运行）+ `.deb`（Debian/Ubuntu 安装包）
+> - **Linux 包只能在 Linux 系统上构建**（AppImage 需要 mksquashfs 等 Linux 工具，Windows 上无法生成）
 > - Windows 图标由 `assets/icon.png` 自动生成，Linux 图标同样取自该文件
+
+### 发布 Release（GitHub Actions 云构建）
+
+仓库已配置 GitHub Actions（`.github/workflows/release.yml`）：推送 `v*` 标签时自动在 **Windows 与 Linux** 两个系统上构建并发布到 GitHub Releases。
+
+```bash
+# 1. 修改 package.json 的 version（如 1.0.0 → 1.1.0）
+# 2. 提交并推送
+git add -A
+git commit -m "v1.1.0: 新功能 xxx"
+git push
+
+# 3. 打标签并推送 → 触发云构建
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+构建完成后，GitHub Releases 页面会自动生成：Windows 安装包（.exe）、Linux AppImage、Linux .deb，可直接供用户下载。
 
 ### 快捷键
 
