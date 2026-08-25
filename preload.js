@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld('api', {
   setDirty: (d) => ipcRenderer.send('app:set-dirty', d),
   setContent: (c) => ipcRenderer.send('app:set-content', c),
   exit: () => ipcRenderer.send('app:exit'),
+  // 双击 .mmd 文件 / 命令行参数打开：主进程通知渲染进程加载
+  onOpenPath: (cb) => ipcRenderer.on('app:open-path', (e, p) => cb(p)),
   // 拖放文件路径
   getPathForFile: (file) => webUtils.getPathForFile(file),
 });

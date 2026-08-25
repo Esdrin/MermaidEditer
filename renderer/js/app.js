@@ -764,6 +764,13 @@ ME.app = (function () {
       if (t && t.root) ME.Naive.tree.setRoot(t.root, t.expanded || []);
     } catch (e) { /* ignore */ }
 
+    // 双击 .mmd 文件（或命令行参数）打开：主进程发送路径，这里加载
+    if (window.api.onOpenPath) {
+      window.api.onOpenPath((p) => {
+        if (p) { openPath(p); expandToFile(p); refreshSync(); }
+      });
+    }
+
     // 草稿恢复提示
     const d = loadDraft();
     if (d) {

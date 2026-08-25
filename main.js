@@ -348,34 +348,44 @@ ipcMain.on('app:exit', () => { if (win) win.close(); });
 // 注意：Electron 主进程中 require.main !== module（指向内部引导模块），不能用作入口判断；
 // 测试通过环境变量 MMD_NO_LIFECYCLE=1 跳过本段，自行创建窗口。
 if (process.env.MMD_NO_LIFECYCLE !== '1') {
-  logBoot('入口启动，请求单实例锁');
-  if (!app.requestSingleInstanceLock()) {
-    logBoot('单实例锁失败 → 已有实例在运行');
-    // 已有实例在运行：明确提示，而不是静默退出（避免"打不开"的错觉）
-    app.whenReady().then(() => {
-      dialog.showMessageBox({
-        type: 'info',
-        title: APP_TITLE,
-        message: '应用已在运行',
-        detail: '请查看已打开的应用窗口。若看不到窗口，请在任务管理器中结束 MermaidEditor（electron.exe）进程后重试。',
-        buttons: ['确定'],
-      }).then(() => app.quit());
-    });
-  } else {
-    logBoot('获得单实例锁');
-    app.on('second-instance', () => {
-      if (win) {
-        if (win.isMinimized()) win.restore();
-        win.focus();
-      }
-    });
-    app.whenReady().then(() => {
-      migrateUserData();
-      logBoot('app ready → createWindow');
-      createWindow();
-    });
-    app.on('window-all-closed', () => app.quit());
+  logBoot('入口启动（多开模式：不申请单实例锁）');
+
+  /** 待打开的文件路径（命令行参数 / open-file 事件），ready 后交给渲染进程 */
+  let pendingOpen = null;
+
+  // Windows / Linux：双击已关联的 .mmd 文件时，文件路径作为命令行参数传入
+  const argFile = process.argv.slice(1).find((a) => /\.(mmd|mermaid|md|txt)$/i.test(a));
+  if (argFile) {
+    pendingOpen = path.resolve(argFile);
+    logBoot('启动参数携带文件: ' + pendingOpen);
   }
+
+  // macOS：Finder 双击文件触发 open-file 事件
+  app.on('open-file', (e, filePath) => {
+    e.preventDefault();
+    logBoot('open-file 事件: ' + filePath);
+    if (win && win.webContents) {
+      win.webContents.send('app:open-path', filePath);
+    } else {
+      pendingOpen = filePath;
+    }
+  });
+
+  app.whenReady().then(() => {
+    migrateUserData();
+    logBoot('app ready → createWindow');
+    createWindow();
+    // 启动后打开命令行传入的文件
+    if (pendingOpen) {
+      const p = pendingOpen;
+      pendingOpen = null;
+      win.webContents.once('did-finish-load', () => {
+        logBoot('加载完成 → 打开启动文件: ' + p);
+        win.webContents.send('app:open-path', p);
+      });
+    }
+  });
+  app.on('window-all-closed', () => app.quit());
 }
 
 /** 应用改名（Mermaid 离线编辑器 → MermaidEditor）后，迁移旧 userData 中的本地状态 */

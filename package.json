@@ -33,6 +33,20 @@
       "renderer/**/*",
       "assets/**/*"
     ],
+    "fileAssociations": [
+      {
+        "ext": "mmd",
+        "name": "Mermaid 图表",
+        "description": "Mermaid 图表文件",
+        "role": "Editor"
+      },
+      {
+        "ext": "mermaid",
+        "name": "Mermaid 图表",
+        "description": "Mermaid 图表文件",
+        "role": "Editor"
+      }
+    ],
     "win": {
       "target": [
         {
