@@ -77,7 +77,25 @@ npm start
 
 ### 构建 / 打包
 
-打包为独立安装程序（electron-builder）暂未配置，需要时可再补充。
+使用 [electron-builder](https://www.electron.build/) 打包为各平台安装程序：
+
+```bash
+# Windows 安装包（NSIS，x64 → release/ 目录）
+npm run build:win
+
+# Linux 安装包（AppImage + deb → release/ 目录）
+npm run build:linux
+
+# 同时构建 Windows 与 Linux
+npm run build:all
+```
+
+> 说明：
+> - 打包产物输出到 `release/` 目录（已在 `.gitignore` 中忽略，不入库）
+> - Windows 安装包：`MermaidEditor Setup 1.0.0.exe`（NSIS 安装向导）
+> - Linux 产物：`MermaidEditor-1.0.0.AppImage`（免安装直接运行）+ `.deb`（Debian/Ubuntu 安装包）
+> - 建议在对应系统上构建（Windows 上构建 Windows 包、Linux 上构建 Linux 包）；交叉构建 Linux 包可能需要额外工具链
+> - Windows 图标由 `assets/icon.png` 自动生成，Linux 图标同样取自该文件
 
 ### 快捷键
 
