@@ -1,0 +1,20 @@
+{
+  "name": "mermaideditor",
+  "productName": "MermaidEditor",
+  "version": "1.0.0",
+  "description": "Windows 桌面端 Mermaid 离线编辑器（Visio 风格界面）",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "mermaid": "10.9.3",
+    "naive-ui": "^2.45.2",
+    "vue": "^3.5.41"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0"
+  }
+}

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; worker-src 'self' blob:">
+<title>MermaidEditor</title>
+<link rel="stylesheet" href="css/visio.css">
+</head>
+<body>
+
+<!-- 功能区 -->
+<div id="ribbon">
+  <div id="ribbon-tabs">
+    <button class="tab" data-tab="file">文件</button>
+    <button class="tab active" data-tab="home">开始</button>
+    <button class="tab" data-tab="insert">插入</button>
+    <button class="tab" data-tab="design">设计</button>
+    <button class="tab" data-tab="view">视图</button>
+  </div>
+  <div id="ribbon-body">
+
+    <!-- 所有标签页（文件/开始/插入/设计/视图）由 Vue 渲染（Naive UI 组件） -->
+    <div id="ribbon-vue"></div>
+
+  </div>
+
+  <!-- 下拉面板（颜色类保留自定义；列表类已由 Naive n-dropdown 提供） -->
+  <div class="dd-panel" id="dd-textcolor"></div>
+  <div class="dd-panel" id="dd-pagebg"></div>
+</div>
+
+<!-- 工作区 -->
+<div id="workspace">
+  <aside id="file-pane">
+    <div class="pane-title">文件</div>
+    <div class="file-toolbar">
+      <button class="mini-btn" data-action="file-open-folder" title="选择文件夹"><span class="ic" data-icon="folder"></span></button>
+      <button class="mini-btn" data-action="file-refresh" title="刷新文件列表"><span class="ic" data-icon="refresh"></span></button>
+      <button class="mini-btn" data-action="file-explorer" title="在文件资源管理器中显示"><span class="ic" data-icon="folderopen"></span></button>
+    </div>
+    <div id="file-list"><div id="tree-host"></div></div>
+  </aside>
+  <div id="resizer-left" class="vresizer" title="拖动调节文件栏宽度"></div>
+
+  <div id="main-pane">
+    <div id="canvas-area" class="show-dots">
+      <div id="error-strip" class="hidden">
+        <span class="flex" id="error-text"></span>
+        <button id="error-close" title="关闭">×</button>
+      </div>
+      <div id="layout-src"></div>
+      <div id="page-wrap"><div id="page"><div id="diagram"><div id="empty-hint">在下方编辑 Mermaid 源代码开始绘图&#10;或从「插入」页添加形状</div></div></div></div>
+    </div>
+  </div>
+
+  <div id="resizer-right" class="vresizer" title="拖动调节右侧栏宽度"></div>
+
+  <div id="right-col">
+    <aside id="props-pane">
+      <div class="pane-title">属性</div>
+      <div id="props-content"></div>
+    </aside>
+    <div id="resizer-code" class="hresizer" title="拖动调节代码窗口高度"></div>
+    <div id="code-pane">
+      <div id="code-header">
+        <span>Mermaid 源代码</span>
+        <span class="flex"></span>
+        <span id="code-pos">1 : 1</span>
+        <button class="mini-btn" data-action="render-now">渲染</button>
+        <button class="mini-btn" data-action="format-code">整理</button>
+      </div>
+      <div id="code-body">
+        <div id="gutter"></div>
+        <textarea id="code" spellcheck="false" wrap="off" autocomplete="off" placeholder="在此输入 Mermaid 语法代码…"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 状态栏 -->
+<div id="statusbar">
+  <span id="status-msg">就绪</span>
+  <span class="flex"></span>
+  <span id="status-type"></span>
+  <span id="status-count"></span>
+  <span id="status-mode"></span>
+  <span class="sb-sep"></span>
+  <span>画布缩放</span>
+  <div id="zoom-host"></div>
+  <span id="zoom-value">100%</span>
+  <span class="sb-sep"></span>
+  <span>界面缩放</span>
+  <button class="mini-btn sb-zoom-btn" data-action="ui-zoom-out" title="界面缩小">A−</button>
+  <span id="ui-zoom-value">100%</span>
+  <button class="mini-btn sb-zoom-btn" data-action="ui-zoom-in" title="界面放大">A+</button>
+</div>
+
+<!-- 浮动元素 -->
+<div id="naive-host"></div>
+<div id="toast"></div>
+<div id="draft-banner" class="hidden">
+  <span>检测到上次未保存的草稿</span>
+  <button class="mini-btn" data-action="draft-restore">恢复</button>
+  <button class="mini-btn" data-action="draft-discard">忽略</button>
+</div>
+
+<script src="../node_modules/vue/dist/vue.runtime.global.prod.js"></script>
+<script src="../node_modules/naive-ui/dist/index.prod.js"></script>
+<script src="../node_modules/mermaid/dist/mermaid.min.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/data.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/render.js"></script>
+<script src="js/canvas.js"></script>
+<script src="js/properties.js"></script>
+<script src="js/export.js"></script>
+<script src="js/naive.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
