@@ -1,7 +1,7 @@
 {
   "name": "mermaideditor",
   "productName": "MermaidEditor",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Windows 桌面端 Mermaid 离线编辑器（Visio 风格界面）",
   "main": "main.js",
   "scripts": {

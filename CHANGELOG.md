@@ -2,6 +2,17 @@
 
 本项目的所有重要变更均记录在此文件中。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.4.1] - 2026-08-27
+
+### 修复
+
+- 中键拖拽恢复为平移画布（此前会触发浏览器默认的中键自动滚动，出现网页四向箭头）
+- package.json 编码修复（PowerShell 写入导致 GBK/UTF-8 乱码与 BOM，已恢复为 UTF-8 无 BOM）
+
+### 说明
+
+- 功能全部正常，本次为稳定修复版本
+
 ## [1.4.0] - 2026-08-27
 
 ### 新增
