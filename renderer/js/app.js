@@ -736,12 +736,13 @@ ME.app = (function () {
       e.preventDefault();
       ME.Renderer.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 1 / 1.12);
     }, { passive: false });
-    // 源码模式：中键拖拽平移画布（与自由画布一致）
+    // 中键拖拽平移画布（源码模式；画布模式由 svg 的 onMouseDown 处理）
     let srcPan = null;
     canvasArea.addEventListener('mousedown', (e) => {
-      if (ME.Canvas && ME.Canvas.active) return;
       if (e.button !== 1) return;
+      // 先阻止浏览器中键自动滚动（四向箭头），无论哪种模式
       e.preventDefault();
+      if (ME.Canvas && ME.Canvas.active) return; // 画布模式由 svg 的 onMouseDown 处理
       srcPan = { sx: e.clientX, sy: e.clientY, sl: canvasArea.scrollLeft, st: canvasArea.scrollTop };
       canvasArea.classList.add('panning-cursor');
     });

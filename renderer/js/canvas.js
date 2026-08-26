@@ -692,10 +692,8 @@ ME.Canvas = (function () {
       return;
     }
     if (ev.button === 1) {
-      // 中键：平移画布
-      if (!t.closest('.fc-node') && !t.closest('.fc-edge') && !t.closest('.fc-port') && !t.closest('.fc-ehandle')) {
-        startPanDrag(ev);
-      }
+      // 中键：任意位置平移画布（阻止浏览器默认的自动滚动）
+      startPanDrag(ev);
       return;
     }
     if (ev.button !== 0) return;
