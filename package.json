@@ -1,8 +1,8 @@
-{
+﻿{
   "name": "mermaideditor",
   "productName": "MermaidEditor",
-  "version": "1.3.0",
-  "description": "Windows 桌面端 Mermaid 离线编辑器（Visio 风格界面）",
+  "version": "1.4.0",
+  "description": "Windows 妗岄潰绔?Mermaid 绂荤嚎缂栬緫鍣紙Visio 椋庢牸鐣岄潰锛?,
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -36,14 +36,14 @@
     "fileAssociations": [
       {
         "ext": "mmd",
-        "name": "Mermaid 图表",
-        "description": "Mermaid 图表文件",
+        "name": "Mermaid 鍥捐〃",
+        "description": "Mermaid 鍥捐〃鏂囦欢",
         "role": "Editor"
       },
       {
         "ext": "mermaid",
-        "name": "Mermaid 图表",
-        "description": "Mermaid 图表文件",
+        "name": "Mermaid 鍥捐〃",
+        "description": "Mermaid 鍥捐〃鏂囦欢",
         "role": "Editor"
       }
     ],
