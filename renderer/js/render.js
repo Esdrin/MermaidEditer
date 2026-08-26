@@ -529,8 +529,8 @@ ME.Renderer = (function () {
     if (!ca) return;
     const bb = svgEl.getBBox();
     if (!bb || !bb.width || !bb.height) return;
-    // 内容显著大于可视区（超出 1.5 倍）且当前未缩放时，自动 fit
-    if (bb.width > ca.clientWidth * 1.5 || bb.height > ca.clientHeight * 1.5) {
+    // 内容只要比可视区大（不限于 1.5 倍）就自动 fit，保证打开即完整可见且居中
+    if (bb.width > ca.clientWidth || bb.height > ca.clientHeight) {
       if (Math.abs(zoom - 1) < 0.01) zoomFit();
     }
   }

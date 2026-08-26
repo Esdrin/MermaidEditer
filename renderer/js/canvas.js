@@ -1303,7 +1303,7 @@ ME.Canvas = (function () {
     ME.app.setStatus('自由画布已同步源码', 'ok');
   }
 
-  /** 画布内容超出可视区（>1.5 倍）且未缩放时，自动 fit 到完整可见 */
+  /** 画布内容超出可视区且未缩放时，自动 fit 到完整可见（居中） */
   function autoFitIfOversized() {
     if (!svg) return;
     const ca = document.getElementById('canvas-area');
@@ -1312,7 +1312,8 @@ ME.Canvas = (function () {
     if (!bb) return;
     const vw = Math.ceil(bb.w + MARGIN * 2);
     const vh = Math.ceil(bb.h + MARGIN * 2);
-    if (vw > ca.clientWidth * 1.5 || vh > ca.clientHeight * 1.5) {
+    // 内容只要比可视区大（不限于 1.5 倍）就自动 fit，保证打开即完整可见且居中
+    if (vw > ca.clientWidth || vh > ca.clientHeight) {
       if (Math.abs(zoomFactor - 1) < 0.01) fitView();
     }
   }
