@@ -669,13 +669,17 @@ ME.Canvas = (function () {
 
   function startMoveDrag(ev, nodeG) {
     const id = nodeG.getAttribute('data-id');
+    const alreadySelected = selNodes.has(id) && selNodes.size === 1 && selEdgeId === null;
     if (!selNodes.has(id)) {
       if (!ev.shiftKey) selNodes.clear();
       selNodes.add(id);
       selEdgeId = null;
       refreshPropsForSelection();
     }
-    render();
+    // 双击第二次点击同一节点：跳过 render，避免重建 DOM 导致 dblclick 指向旧元素
+    if (!alreadySelected) {
+      render();
+    }
     const start = svgPoint(ev);
     if (!start) return;
     const origins = model.nodes.filter((n) => selNodes.has(n.id)).map((n) => ({ id: n.id, x: n.x, y: n.y }));
@@ -853,9 +857,17 @@ ME.Canvas = (function () {
   }
 
   function onDblClick(ev) {
-    const g = ev.target.closest('.fc-node');
+    // 注意：单击已触发 render() 重建 DOM，ev.target 可能是旧元素；
+    // 用坐标重新定位当前命中的元素，保证双击箭头/节点可靠触发
+    const cur = svgPoint(ev);
+    let hitEl = ev.target;
+    if (cur && svg) {
+      const r = svg.getBoundingClientRect();
+      hitEl = document.elementFromPoint(ev.clientX, ev.clientY) || ev.target;
+    }
+    const g = hitEl.closest('.fc-node');
     if (g) { startLabelEdit(g.getAttribute('data-id')); return; }
-    const eg = ev.target.closest('.fc-edge');
+    const eg = hitEl.closest('.fc-edge');
     if (eg) { startEdgeLabelEdit(eg.getAttribute('data-id')); }
   }
 
@@ -952,6 +964,9 @@ ME.Canvas = (function () {
   }
 
   function selectEdge(id) {
+    // 若已选中同一连线则跳过 render：避免双击时第二次 mousedown 重建 DOM，
+    // 导致浏览器派发的 dblclick 指向已脱离文档的旧元素而无法进入标签编辑
+    if (selEdgeId === id && selNodes.size === 0) return;
     selNodes.clear();
     selEdgeId = id;
     render();
