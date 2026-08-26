@@ -567,10 +567,17 @@ ME.app = (function () {
     ME.Editor.setSource(r.content);
     setDirty(false);
     addRecent(r.path);
+    // 自动切换编辑模式：流程图 → 自由画布；其他图类型 → 源码模式
+    const type = ME.Renderer.detectType(r.content);
+    if (type === 'flow') {
+      if (!ME.Canvas.active) setMode('canvas');
+    } else {
+      if (ME.Canvas.active) setMode('source');
+    }
     ME.Renderer.renderNow();
     expandToFile(r.path);
     refreshSync();
-    toast('已打开 ' + basename(r.path));
+    toast('已打开 ' + basename(r.path) + (type === 'flow' ? '（自由画布）' : '（源码模式）'));
   }
 
   async function doSave(saveAs) {
@@ -640,10 +647,17 @@ ME.app = (function () {
     ME.Editor.setSource(r.content);
     setDirty(false);
     addRecent(r.path);
+    // 自动切换编辑模式：流程图 → 自由画布；其他图类型 → 源码模式
+    const type = ME.Renderer.detectType(r.content);
+    if (type === 'flow') {
+      if (!ME.Canvas.active) setMode('canvas');
+    } else {
+      if (ME.Canvas.active) setMode('source');
+    }
     ME.Renderer.renderNow();
     expandToFile(r.path);
     refreshSync();
-    toast('已打开 ' + basename(r.path));
+    toast('已打开 ' + basename(r.path) + (type === 'flow' ? '（自由画布）' : '（源码模式）'));
   }
 
   /* ---------------- 草稿 ---------------- */

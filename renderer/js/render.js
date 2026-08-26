@@ -285,6 +285,8 @@ ME.Renderer = (function () {
       const n = diagram.querySelectorAll('g.node').length;
       let e = diagram.querySelectorAll('.edgePath').length;
       if (!e) e = diagram.querySelectorAll('.edgePaths > path').length;
+      // 大流程自适应：内容超出可视区时自动缩放适应窗口，避免画布太小看不到全貌
+      autoFitIfOversized();
       ME.app.setStatus('渲染成功', 'ok');
       ME.app.setCount(n, e);
       ME.app.syncUiChecks();
@@ -506,6 +508,20 @@ ME.Renderer = (function () {
 
   function markNodeSelected(name) { selRef = { kind: 'node', name: name }; }
   function markEdgeSelected(idx) { selRef = { kind: 'edge', idx: idx }; }
+
+  /** 内容超出可视区时自动缩放适应窗口（大流程图自动缩小到完整可见） */
+  function autoFitIfOversized() {
+    const svgEl = diagram.querySelector('svg');
+    if (!svgEl) return;
+    const wrap = document.getElementById('page-wrap');
+    if (!wrap) return;
+    const bb = svgEl.getBBox();
+    if (!bb || !bb.width || !bb.height) return;
+    // 内容显著大于可视区（超出 1.5 倍）且当前未缩放时，自动 fit
+    if (bb.width > wrap.clientWidth * 1.5 || bb.height > wrap.clientHeight * 1.5) {
+      if (Math.abs(zoom - 1) < 0.01) zoomFit();
+    }
+  }
 
   return {
     cfg: cfg,

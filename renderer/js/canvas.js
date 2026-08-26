@@ -1168,7 +1168,23 @@ ME.Canvas = (function () {
     selNodes.clear(); selEdgeId = null;
     render();
     ME.Props.showCanvasDiagram();
+    // 大流程自适应：内容显著大于可视区时自动缩小到完整可见
+    autoFitIfOversized();
     ME.app.setStatus('自由画布已同步源码', 'ok');
+  }
+
+  /** 画布内容超出可视区（>1.5 倍）且未缩放时，自动 fit 到完整可见 */
+  function autoFitIfOversized() {
+    if (!svg) return;
+    const ca = document.getElementById('canvas-area');
+    if (!ca) return;
+    const bb = contentBounds();
+    if (!bb) return;
+    const vw = Math.ceil(bb.w + MARGIN * 2);
+    const vh = Math.ceil(bb.h + MARGIN * 2);
+    if (vw > ca.clientWidth * 1.5 || vh > ca.clientHeight * 1.5) {
+      if (Math.abs(zoomFactor - 1) < 0.01) fitView();
+    }
   }
 
   function flowHeader(src) {
