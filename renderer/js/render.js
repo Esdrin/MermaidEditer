@@ -43,6 +43,26 @@ ME.Renderer = (function () {
 
   function typeName(t) { return ME.DIAGRAM_TYPES[t] || '未知'; }
 
+  /** 标签写入 Mermaid 源码前的转义（与画布模式一致；mermaid htmlLabels 会把实体渲染回原字符） */
+  function escLabel(t) {
+    return String(t)
+      .replace(/&/g, '&amp;')
+      .replace(/\(/g, '&#40;').replace(/\)/g, '&#41;')
+      .replace(/\|/g, '&#124;')
+      .replace(/\[/g, '&#91;').replace(/\]/g, '&#93;')
+      .replace(/\{/g, '&#123;').replace(/\}/g, '&#125;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  /** 从源码标签解码回原字符 */
+  function unescLabel(t) {
+    return String(t)
+      .replace(/&#40;/g, '(').replace(/&#41;/g, ')')
+      .replace(/&#124;/g, '|').replace(/&#91;/g, '[').replace(/&#93;/g, ']')
+      .replace(/&#123;/g, '{').replace(/&#125;/g, '}')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  }
+
   /* ---- 源代码解析（流程图） ---- */
   const TOKEN_MAP = new Map();
   ME.SHAPES.forEach((s) => {
@@ -254,6 +274,7 @@ ME.Renderer = (function () {
     const src = ME.Editor.getSource();
     // 自由画布模式下 #diagram 由 ME.Canvas 接管，不在此渲染
     if (window.ME.Canvas && ME.Canvas.active) return;
+    closeEditBox(); // 渲染重建 DOM 前关闭就地编辑框
     errorStrip.classList.add('hidden');
     if (!src.trim()) {
       diagram.innerHTML = '<div id="empty-hint">在下方编辑 Mermaid 源代码开始绘图\n或从左侧拖入形状</div>';
@@ -337,7 +358,7 @@ ME.Renderer = (function () {
     if (selRef.kind === 'node') {
       const node = parseNodes().find((n) => n.name === selRef.name);
       if (!node) { selRef = null; ME.Props.showDiagram(); return; }
-      const g = findNodeElByLabel(node.text || node.name);
+      const g = findNodeElByNode(node);
       if (g) g.classList.add('sel');
       ME.Props.showNode(node);
     } else if (selRef.kind === 'edge') {
@@ -349,6 +370,11 @@ ME.Renderer = (function () {
     }
   }
 
+  /** 源码节点文本 → DOM 标签文本：去掉定义引号并解码实体（如 "main.py&lt;br/&gt;x" → main.py<br/>x） */
+  function nodeDomLabel(n) {
+    return unescLabel(String(n.text || n.name).replace(/^"|"$/g, ''));
+  }
+
   function findNodeElByLabel(label) {
     const els = diagram.querySelectorAll('g.node');
     for (const g of els) {
@@ -356,6 +382,19 @@ ME.Renderer = (function () {
       if (el && (el.textContent || '').trim() === String(label).trim()) return g;
     }
     return null;
+  }
+
+  /** 按源码节点找对应渲染元素（文本经引号/实体规范化后匹配） */
+  function findNodeElByNode(node) {
+    const domLabel = nodeDomLabel(node);
+    let g = findNodeElByLabel(domLabel);
+    if (!g) g = findNodeElByLabel(node.name);
+    return g;
+  }
+
+  function findNodeByDomLabel(label) {
+    const nodes = parseNodes();
+    return nodes.find((n) => nodeDomLabel(n) === label) || nodes.find((n) => n.name === label) || null;
   }
 
   function clearSelKeepProps() {
@@ -389,16 +428,16 @@ ME.Renderer = (function () {
       const label = el ? (el.textContent || '').trim() : '';
       g.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        const node = nodes.find((n) => (n.text || n.name) === label) || nodes.find((n) => n.name === label);
+        const node = findNodeByDomLabel(label);
         if (node) selectNode(node, g); else clearSel();
       });
       g.addEventListener('dblclick', (ev) => {
         ev.stopPropagation();
-        const node = nodes.find((n) => (n.text || n.name) === label) || nodes.find((n) => n.name === label);
+        const node = findNodeByDomLabel(label);
         if (node) {
           selRef = { kind: 'node', name: node.name };
           ME.Props.showNode(node);
-          ME.Editor.selectLine(node.line, { focus: true });
+          startNodeEdit(node, g);
         }
       });
     });
@@ -409,6 +448,13 @@ ME.Renderer = (function () {
         ev.stopPropagation();
         if (edges[i]) selectEdge(edges[i], i, el);
       });
+      el.addEventListener('dblclick', (ev) => {
+        ev.stopPropagation();
+        if (edges[i]) {
+          selectEdge(edges[i], i, el);
+          startEdgeEdit(edges[i], el);
+        }
+      });
     });
     diagram.querySelectorAll('.edgeLabel').forEach((g) => {
       g.addEventListener('click', (ev) => {
@@ -417,6 +463,12 @@ ME.Renderer = (function () {
         const idx = edges.findIndex((e) => e.label === txt);
         if (idx >= 0) selectEdge(edges[idx], idx, null);
       });
+      g.addEventListener('dblclick', (ev) => {
+        ev.stopPropagation();
+        const txt = (g.textContent || '').trim();
+        const idx = edges.findIndex((e) => e.label === txt);
+        if (idx >= 0) startEdgeEdit(edges[idx], g);
+      });
     });
     // 点击画布空白处取消选中
     diagram.addEventListener('click', (e) => {
@@ -424,6 +476,127 @@ ME.Renderer = (function () {
         clearSel();
       }
     });
+  }
+
+  /* ---- 双击就地编辑（源码模式）：节点文本 / 连线标签 ---- */
+  let editInput = null; // 当前就地编辑的输入框
+
+  /** 在目标元素上方浮出编辑框，提交后把新值写回源码并重渲染 */
+  function openEditBox(anchorEl, value, placeholder, onCommit) {
+    closeEditBox();
+    const r = anchorEl.getBoundingClientRect();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value;
+    input.placeholder = placeholder || '';
+    input.style.cssText = 'position:fixed;z-index:9999;min-width:140px;width:' +
+      Math.max(140, Math.round(r.width)) + 'px;height:30px;padding:0 8px;font-size:13px;' +
+      'border:2px solid #18a058;border-radius:4px;outline:none;box-shadow:0 4px 14px rgba(0,0,0,.18);' +
+      'font-family:inherit;box-sizing:border-box;';
+    input.style.left = Math.round(r.left + r.width / 2 - Math.max(140, r.width) / 2) + 'px';
+    input.style.top = Math.round(r.top - 36) + 'px';
+    document.body.appendChild(input);
+    editInput = input;
+    const finish = (commit) => {
+      if (editInput !== input) return;
+      editInput = null;
+      input.remove();
+      if (commit) onCommit(input.value);
+    };
+    input.addEventListener('keydown', (ev) => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') finish(true);
+      else if (ev.key === 'Escape') finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.focus();
+    input.select();
+  }
+
+  function closeEditBox() {
+    if (editInput) { editInput.remove(); editInput = null; }
+  }
+
+  /** 双击节点 → 就地编辑节点文本，写回源码对应行的定义 */
+  function startNodeEdit(node, gEl) {
+    if (node.inline) {
+      // 内联节点（只在连线行里定义，如 B --> C[文本]）：直接定位源码行
+      ME.Editor.selectLine(node.line, { focus: true });
+      ME.app.toast('内联节点请在源码中编辑', 'info');
+      return;
+    }
+    if (node.line < 0) return;
+    // 找到源码中该节点的定义（形如 name["文本"]），取当前文本
+    const lines = ME.Editor.getSource().split('\n');
+    const raw = lines[node.line] || '';
+    const def = extractNodeDef(raw, node.name);
+    if (!def) { ME.Editor.selectLine(node.line, { focus: true }); return; }
+    const shape = ME.SHAPES.find((s) => s.id === node.shape);
+    const t0 = shape ? shape.t[0] : '[';
+    const t1 = shape ? shape.t[1] : ']';
+    const value = nodeDomLabel(node);
+    openEditBox(gEl, value, '节点文本', (v) => {
+      const next = lines.slice();
+      // 保留原引号风格：name[t0] 后原有引号则保留，否则不加
+      const afterTok = raw.slice(def.start + node.name.length + t0.length);
+      const hasQuote = /^"/.test(afterTok);
+      next[node.line] = raw.slice(0, def.start) + node.name + t0 +
+        (hasQuote ? '"' : '') + escLabel(v) + (hasQuote ? '"' : '') + t1 + raw.slice(def.end);
+      ME.Editor.setSource(next.join('\n'));
+      selRef = { kind: 'node', name: node.name };
+    });
+  }
+
+  /** 从节点定义行中提取 name[ 起始位置与定义结束位置（含结束 token） */
+  function extractNodeDef(raw, name) {
+    const shapes = ME.SHAPES.map((s) => s.t[0]).sort((a, b) => b.length - a.length);
+    for (const t0 of shapes) {
+      const idx = raw.indexOf(name + t0);
+      if (idx < 0) continue;
+      const t1 = (ME.SHAPES.find((s) => s.t[0] === t0) || {}).t[1] || ']';
+      const end = raw.indexOf(t1, idx + name.length + t0.length);
+      if (end >= 0) return { start: idx, end: end + t1.length };
+    }
+    return null;
+  }
+
+  /** 双击连线 → 就地编辑标签，写回源码对应行的 |标签| */
+  function startEdgeEdit(edge, el) {
+    const lines = ME.Editor.getSource().split('\n');
+    const raw = lines[edge.line] || '';
+    const conn = edge.connector || '-->';
+    // 在行中定位标签位置：A -->|label| B（conn 后紧跟 |）
+    const fromIdx = raw.indexOf(edge.from);
+    const connIdx = fromIdx >= 0 ? raw.indexOf(conn, fromIdx + edge.from.length) : -1;
+    if (connIdx < 0) { ME.Editor.selectLine(edge.line, { focus: true }); return; }
+    let barStart = raw.indexOf('|', connIdx + conn.length);
+    let hasBar = barStart >= 0;
+    if (!hasBar) {
+      // 兼容 A -- label --> B 形式：标签在 -- 与 --> 之间
+      barStart = connIdx + conn.length;
+      hasBar = true;
+    }
+    const barEnd = hasBar ? raw.indexOf('|', barStart + 1) : -1;
+    openEditBox(el, unescLabel(edge.label || ''), '连线标签', (v) => {
+      const next = lines.slice();
+      if (barEnd >= 0) {
+        next[edge.line] = raw.slice(0, barStart + 1) + escLabel(v) + raw.slice(barEnd);
+      } else {
+        // 无 | 包裹（-- label --> 形式）：替换 -- 与 --> 之间的文本
+        const arrow = raw.indexOf('-->', barStart);
+        if (arrow >= 0) {
+          next[edge.line] = raw.slice(0, barStart) + (v ? ' ' + escLabel(v) + ' ' : ' ') + raw.slice(arrow);
+        } else {
+          next[edge.line] = raw.slice(0, barStart) + (v ? ' |' + escLabel(v) + '| ' : ' ') + raw.slice(barStart + conn.length);
+        }
+      }
+      ME.Editor.setSource(next.join('\n'));
+      selRef = { kind: 'edge', idx: edge.line >= 0 ? edgesIndexOf(edge) : 0 };
+    });
+  }
+
+  function edgesIndexOf(edge) {
+    return parseEdges().findIndex((e) => e.line === edge.line && e.from === edge.from && e.to === edge.to);
   }
 
   /* ---- 缩放 ---- */
