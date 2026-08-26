@@ -323,10 +323,38 @@ ME.Canvas = (function () {
         c1.x += off * revDir; c2.x += off * revDir;
       }
     }
+    // 多线汇聚：指向同一目标节点的多条连线，标签按源节点顺序错开（避免标签重叠）
+    let mergeIdx = 0;
+    const sameTarget = model.edges.filter((x) => x !== e && x.to === e.to);
+    if (sameTarget.length) {
+      const isVert = adx <= ady; // 本线是垂直连接（从目标上下边进入）
+      // 同向边判断：垂直连接都从上下边、水平连接都从左右边进入目标
+      const sameSide = sameTarget.filter((x) => {
+        const xn = model.nodes.find((n) => n.id === x.from);
+        if (!xn) return false;
+        const tdx = (b.x + b.w / 2) - (xn.x + xn.w / 2);
+        const tdy = (b.y + b.h / 2) - (xn.y + xn.h / 2);
+        const isVertX = Math.abs(tdx) <= Math.abs(tdy);
+        return isVertX === isVert; // 同为垂直或同为水平
+      });
+      // 按源节点 y（垂直）或 x（水平）排序，分配序号
+      const ordered = [e, ...sameSide].sort((p, q) => {
+        const pn = model.nodes.find((n) => n.id === p.from);
+        const qn = model.nodes.find((n) => n.id === q.from);
+        if (!pn || !qn) return 0;
+        return isVert ? (pn.y - qn.y) : (pn.x - qn.x);
+      });
+      mergeIdx = ordered.indexOf(e);
+    }
     // 贝塞尔曲线中点（t=0.5）作为标签位置
     const mx = (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8;
     const my = (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8;
-    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y, mx: mx, my: my, reverse: !!reverse, revDir: revDir };
+    return {
+      x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+      c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y,
+      mx: mx, my: my, reverse: !!reverse, revDir: revDir,
+      mergeIdx: mergeIdx,
+    };
   }
 
   /** 贝塞尔路径 d 字符串 */
@@ -395,6 +423,17 @@ ME.Canvas = (function () {
         // 垂直连线：水平方向额外偏移——需要超过半个标签宽度，避免宽标签横向重叠
         const extra = Math.min(120, 30 + tw / 2);
         lx = g.mx + extra * g.revDir;
+      }
+    } else if (g.mergeIdx > 0) {
+      // 多线汇聚同一目标节点：按序号错开标签，避免同边进入的标签重叠
+      // 垂直连线（从目标上下边进入）→ 沿水平方向错开，步长需超过标签宽度一半
+      // 水平连线（从目标左右边进入）→ 沿垂直方向错开
+      if (Math.abs(g.x2 - g.x1) >= Math.abs(g.y2 - g.y1)) {
+        // 水平连线：标签沿垂直方向错开（纵向叠放，步长适中）
+        ly = g.my + g.mergeIdx * 24;
+      } else {
+        // 垂直连线：标签沿水平方向错开（横向并列，步长大避免宽标签重叠）
+        lx = g.mx + g.mergeIdx * (tw + 20);
       }
     }
     return '<g class="fc-edge-labelg" transform="translate(' + num(lx) + ' ' + num(ly) + ')">' +
