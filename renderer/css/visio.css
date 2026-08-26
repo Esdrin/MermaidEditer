@@ -665,6 +665,9 @@ body.connect-mode .fc-node { cursor: crosshair; }
 .fc-edge-label { user-select: none; pointer-events: none; }
 .fc-temp-edge { pointer-events: none; }
 
+/* 框选矩形 */
+.fc-marquee { fill: rgba(24, 160, 88, .10); stroke: #18a058; stroke-width: 1.2; stroke-dasharray: 5 3; pointer-events: none; }
+
 /* 连线端点改接手柄 */
 .fc-ehandle { fill: #ffffff; stroke: #18a058; stroke-width: 2; cursor: crosshair; }
 .fc-ehandle[data-end="to"] { fill: #18a058; }

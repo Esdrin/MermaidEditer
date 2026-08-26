@@ -286,7 +286,6 @@ ME.Props = (function () {
 
     root.appendChild(row('标签', textInput(edge.label, (v) => applyEdge({ label: v }))));
     root.appendChild(row('线型', selectCtrl(edge.connector, connOpts, (v) => applyEdge({ connector: v }))));
-    root.appendChild(row('颜色', colorCtrl(style.stroke || '#333333', (v) => applyEdge({ color: v }))));
 
     const del = el('button', 'prop-btn danger', '删除此连线');
     del.addEventListener('click', deleteEdge);
@@ -294,7 +293,7 @@ ME.Props = (function () {
     wr.appendChild(del);
     root.appendChild(wr);
     root.appendChild(el('div', 'prop-hint',
-      edge.from + ' → ' + edge.to + '（' + edge.connector + '）\n线宽统一 1px。'));
+      edge.from + ' → ' + edge.to + '（' + edge.connector + '）\n颜色由主题统一管理，线宽固定 1px。'));
   }
 
   function applyEdge(patch) {
@@ -313,8 +312,7 @@ ME.Props = (function () {
 
     const merged = Object.assign(getEdgeStyle(idx), patch);
     const parts = [];
-    if (merged.stroke) parts.push('stroke:' + merged.stroke);
-    // 线宽统一默认 1px，不再写入 stroke-width
+    // 颜色由主题统一管理、线宽固定 1px，不再写入 linkStyle 指令
     const lsRe = new RegExp('^\\s*linkStyle\\s+' + idx + '\\b');
     const lsIdx = src.findIndex((l) => lsRe.test(l));
     if (parts.length) {
@@ -417,14 +415,13 @@ ME.Props = (function () {
     });
     root.appendChild(row('标签', textInput(edge.label, (v) => ME.Canvas.updateEdge(edge.id, { label: v }))));
     root.appendChild(row('线型', selectCtrl(edge.connector, connOpts, (v) => ME.Canvas.updateEdge(edge.id, { connector: v }))));
-    root.appendChild(row('颜色', colorCtrl(edge.color || '#333333', (v) => ME.Canvas.updateEdge(edge.id, { color: v }))));
 
     const del = el('button', 'prop-btn danger', '删除此连线');
     del.addEventListener('click', () => ME.Canvas.removeEdge(edge.id));
     const wr = el('div', 'prop-row');
     wr.appendChild(del);
     root.appendChild(wr);
-    root.appendChild(el('div', 'prop-hint', edge.from + ' → ' + edge.to + '（' + edge.connector + '）\n修改会以 linkStyle 指令写回 Mermaid 源码，线宽统一 1px。'));
+    root.appendChild(el('div', 'prop-hint', edge.from + ' → ' + edge.to + '（' + edge.connector + '）\n颜色由主题统一管理，线宽固定 1px。'));
   }
 
   function showCanvasMulti(count) {

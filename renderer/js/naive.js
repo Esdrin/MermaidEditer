@@ -441,6 +441,10 @@ ME.Naive = (function () {
             h('div', { class: 'shape-grid', id: 'sg-types' }),
             h('div', { class: 'group-title' }, '模板'),
           ]),
+          h('div', { class: 'ribbon-group' }, [
+            h('div', { class: 'shape-grid', id: 'sg-align' }),
+            h('div', { class: 'group-title' }, '整理'),
+          ]),
         ]),
         h('div', { class: 'ribbon-page', id: 'page-design' }, RIBBON_DATA.design.map(ribbonGroup)),
         h('div', { class: 'ribbon-page', id: 'page-view' }, RIBBON_DATA.view.map(ribbonGroup)),

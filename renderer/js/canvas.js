@@ -202,6 +202,37 @@ ME.Canvas = (function () {
     ME.Props.showCanvasDiagram();
   }
 
+  /** 对齐整理：对选中的节点按指定方式对齐（需 ≥2 个选中节点）
+   *  mode: 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' */
+  function alignNodes(mode) {
+    const ids = [...selNodes];
+    if (ids.length < 2) {
+      ME.app.toast('请先用框选或 Shift 多选至少 2 个节点', 'warning');
+      return false;
+    }
+    const ns = model.nodes.filter((n) => selNodes.has(n.id));
+    // 基准：左对齐用最左、右对齐用最右、上对齐用最上、下对齐用最下
+    const minX = Math.min.apply(null, ns.map((n) => n.x));
+    const maxX = Math.max.apply(null, ns.map((n) => n.x + n.w));
+    const minY = Math.min.apply(null, ns.map((n) => n.y));
+    const maxY = Math.max.apply(null, ns.map((n) => n.y + n.h));
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    ns.forEach((n) => {
+      if (mode === 'left') n.x = snap(minX);
+      else if (mode === 'right') n.x = snap(maxX - n.w);
+      else if (mode === 'hcenter') n.x = snap(cx - n.w / 2);
+      else if (mode === 'top') n.y = snap(minY);
+      else if (mode === 'bottom') n.y = snap(maxY - n.h);
+      else if (mode === 'vcenter') n.y = snap(cy - n.h / 2);
+    });
+    render();
+    scheduleExport(true);
+    const names = { left: '左对齐', hcenter: '水平居中', right: '右对齐', top: '上对齐', vcenter: '垂直居中', bottom: '下对齐' };
+    ME.app.setStatus('已' + (names[mode] || mode) + ' ' + ns.length + ' 个节点');
+    return true;
+  }
+
   function duplicateNodes() {
     const ids = [...selNodes];
     if (!ids.length) return;
@@ -425,6 +456,11 @@ ME.Canvas = (function () {
         html += '<path class="fc-temp-edge" d="M ' + num(sx2) + ' ' + num(sy2) + ' L ' + num(connectTool.cur.x) + ' ' + num(connectTool.cur.y) +
           '" fill="none" stroke="#18a058" stroke-width="2" stroke-dasharray="6 4"/>';
       }
+    } else if (drag && drag.type === 'marquee') {
+      // 框选矩形
+      const rx = Math.min(drag.x1, drag.x2), ry = Math.min(drag.y1, drag.y2);
+      const rw = Math.abs(drag.x2 - drag.x1), rh = Math.abs(drag.y2 - drag.y1);
+      html += '<rect class="fc-marquee" x="' + num(rx) + '" y="' + num(ry) + '" width="' + num(rw) + '" height="' + num(rh) + '"/>';
     }
     html += '</svg>';
 
@@ -528,10 +564,10 @@ ME.Canvas = (function () {
 
   function onMouseDown(ev) {
     if (editInput) return;
-    if (ev.button !== 0) return;
     const t = ev.target;
     // 连线工具模式：按住节点拖到另一节点直接画线；不拖动则是点击-点击
     if (connectTool) {
+      if (ev.button !== 0) return;
       const port = t.closest('.fc-port');
       const nodeG = port ? null : t.closest('.fc-node');
       const fromId = port ? port.getAttribute('data-node') : (nodeG ? nodeG.getAttribute('data-id') : null);
@@ -539,6 +575,14 @@ ME.Canvas = (function () {
       else cancelConnectTool();
       return;
     }
+    if (ev.button === 1) {
+      // 中键：平移画布
+      if (!t.closest('.fc-node') && !t.closest('.fc-edge') && !t.closest('.fc-port') && !t.closest('.fc-ehandle')) {
+        startPanDrag(ev);
+      }
+      return;
+    }
+    if (ev.button !== 0) return;
     const ehandle = t.closest('.fc-ehandle');
     if (ehandle) { startEdgeReconnectDrag(ev, ehandle); return; }
     const port = t.closest('.fc-port');
@@ -548,8 +592,23 @@ ME.Canvas = (function () {
     const edgeG = t.closest('.fc-edge');
     if (edgeG) { selectEdge(edgeG.getAttribute('data-id')); return; }
     if (!ev.shiftKey) clearSelection();
-    // 空白处：拖动画布平移（单击仍取消选中）
-    startPanDrag(ev);
+    // 空白处左键：拖拽框选多个节点（单击仍取消选中）
+    startMarqueeDrag(ev);
+  }
+
+  /** 空白处左键按住拖动 → 框选多个节点 */
+  function startMarqueeDrag(ev) {
+    const p = svgPoint(ev);
+    if (!p) return;
+    drag = {
+      type: 'marquee',
+      sx: ev.clientX, sy: ev.clientY,
+      x1: p.x, y1: p.y, x2: p.x, y2: p.y,
+      moved: 0,
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    ev.preventDefault();
   }
 
   /** 空白处按住拖动 → 平移画布视口（不改变节点坐标，仅移动 viewBox） */
@@ -662,6 +721,12 @@ ME.Canvas = (function () {
     }
     const cur = svgPoint(ev);
     if (!cur) return;
+    if (drag.type === 'marquee') {
+      drag.moved += Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy);
+      drag.x2 = cur.x; drag.y2 = cur.y;
+      render();
+      return;
+    }
     if (drag.type === 'move') {
       const dx = cur.x - drag.start.x, dy = cur.y - drag.start.y;
       drag.origins.forEach((o) => {
@@ -686,6 +751,33 @@ ME.Canvas = (function () {
       if (svg) svg.classList.remove('panning');
       if (moved < 5) {
         // 单击空白：取消选中（onMouseDown 已清空，仅恢复状态提示）
+        ME.Props.showCanvasDiagram();
+      }
+      return;
+    }
+    if (drag.type === 'marquee') {
+      const wasClick = drag.moved < 5;
+      const x1 = drag.x1, y1 = drag.y1, x2 = drag.x2, y2 = drag.y2;
+      drag = null;
+      render();
+      if (wasClick) {
+        ME.Props.showCanvasDiagram();
+        return;
+      }
+      // 框选：与选框矩形相交的节点全部选中
+      const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+      const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+      selNodes.clear();
+      selEdgeId = null;
+      model.nodes.forEach((n) => {
+        if (n.x < maxX && n.x + n.w > minX && n.y < maxY && n.y + n.h > minY) selNodes.add(n.id);
+      });
+      if (selNodes.size) {
+        render();
+        if (selNodes.size === 1) ME.Props.showCanvasNode(model.nodes.find((x) => x.id === [...selNodes][0]));
+        else ME.Props.showCanvasMulti(selNodes.size);
+        ME.app.setStatus('已框选 ' + selNodes.size + ' 个节点');
+      } else {
         ME.Props.showCanvasDiagram();
       }
       return;
@@ -1220,5 +1312,6 @@ ME.Canvas = (function () {
     setZoomFactor: setZoomFactor,
     getZoomFactor: getZoomFactor,
     fitView: fitView,
+    alignNodes: alignNodes,
   };
 })();

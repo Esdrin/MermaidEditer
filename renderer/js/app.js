@@ -46,7 +46,8 @@ ME.app = (function () {
   function updateType() {
     const t = ME.Renderer.detectType(ME.Editor.getSource());
     $('status-type').textContent = ME.Renderer.typeName(t);
-    $('btn-dir').disabled = t !== 'flow';
+    const btnDir = $('btn-dir');
+    if (btnDir) btnDir.disabled = t !== 'flow';
   }
   function setPageBg(color) {
     $('page').style.background = color;
@@ -307,6 +308,30 @@ ME.app = (function () {
         typesGrid.appendChild(cell(ME.svg(t.icon), t.label + '（' + t.sub + '）', () => insertTemplate(t.id), 'template', t.id));
       });
     }
+    // 整理：对齐选中的多个节点（3×2 小格子）
+    const alignGrid = $('sg-align');
+    if (alignGrid) {
+      const aligns = [
+        ['align-left', '左对齐', 'left'],
+        ['align-hcenter', '水平居中', 'hcenter'],
+        ['align-right', '右对齐', 'right'],
+        ['align-top', '上对齐', 'top'],
+        ['align-vcenter', '垂直居中', 'vcenter'],
+        ['align-bottom', '下对齐', 'bottom'],
+      ];
+      aligns.forEach(([icon, label, mode]) => {
+        alignGrid.appendChild(cell(ME.svg(ME.ICONS[icon]), label, () => alignCanvasNodes(mode), null, null));
+      });
+    }
+  }
+
+  /** 画布节点对齐整理（需选中 ≥2 个节点；未在画布模式时提示） */
+  function alignCanvasNodes(mode) {
+    if (!ME.Canvas || !ME.Canvas.active) {
+      toast('请先切换到「自由画布」模式并选中多个节点', 'warning');
+      return;
+    }
+    ME.Canvas.alignNodes(mode);
   }
 
   function buildDropdowns() {
