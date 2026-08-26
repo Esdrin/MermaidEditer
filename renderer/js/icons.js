@@ -52,11 +52,11 @@ ME.ICONS = {
   folder: ME.svg('<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
   refresh: ME.svg('<path d="M21 12a9 9 0 1 1-2.7-6.4"/><path d="M21 3v5h-5"/>'),
   folderopen: ME.svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/>'),
-  // 对齐整理
-  'align-left': ME.svg('<path d="M4 5.5h16"/><rect x="4" y="9" width="6" height="6" rx="1"/><path d="M4 19.5h12"/>'),
+  // 对齐整理（水平对齐：横线参考 + 方块水平定位；垂直对齐：竖线参考 + 方块垂直定位）
+  'align-left': ME.svg('<path d="M4 5.5h16"/><rect x="4" y="9" width="6" height="6" rx="1"/><path d="M4 19.5h16"/>'),
   'align-hcenter': ME.svg('<path d="M4 5.5h16"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M4 19.5h16"/>'),
-  'align-right': ME.svg('<path d="M4 5.5h16"/><rect x="14" y="9" width="6" height="6" rx="1"/><path d="M8 19.5h12"/>'),
-  'align-top': ME.svg('<path d="M5.5 4h13"/><rect x="9" y="8" width="6" height="6" rx="1"/><path d="M5.5 18h13"/>'),
-  'align-vcenter': ME.svg('<path d="M5.5 4h13"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M5.5 20h13"/>'),
-  'align-bottom': ME.svg('<path d="M5.5 4h13"/><rect x="9" y="14" width="6" height="6" rx="1"/><path d="M5.5 20h13"/>'),
+  'align-right': ME.svg('<path d="M4 5.5h16"/><rect x="14" y="9" width="6" height="6" rx="1"/><path d="M4 19.5h16"/>'),
+  'align-top': ME.svg('<path d="M5.5 4v16"/><rect x="9" y="4" width="6" height="6" rx="1"/><path d="M18.5 4v16"/>'),
+  'align-vcenter': ME.svg('<path d="M5.5 4v16"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M18.5 4v16"/>'),
+  'align-bottom': ME.svg('<path d="M5.5 4v16"/><rect x="9" y="14" width="6" height="6" rx="1"/><path d="M18.5 4v16"/>'),
 };

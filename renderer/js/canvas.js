@@ -281,29 +281,67 @@ ME.Canvas = (function () {
   }
 
   /* ---------------- 连线几何 ---------------- */
-  function borderPoint(n, dx, dy) {
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;
-    let t = Infinity;
-    if (Math.abs(ux) > 1e-6) t = Math.min(t, (n.w / 2) / Math.abs(ux));
-    if (Math.abs(uy) > 1e-6) t = Math.min(t, (n.h / 2) / Math.abs(uy));
-    t = t === Infinity ? 1 : t;
-    return { x: n.x + n.w / 2 + ux * t, y: n.y + n.h / 2 + uy * t };
-  }
-
+  /** 按两节点相对位置决定出口/入口边（上下左右），返回贝塞尔曲线控制点 */
   function edgeGeometry(e) {
     const a = model.nodes.find((n) => n.id === e.from);
     const b = model.nodes.find((n) => n.id === e.to);
     if (!a || !b) return null;
-    const dx = (b.x + b.w / 2) - (a.x + a.w / 2);
-    const dy = (b.y + b.h / 2) - (a.y + a.h / 2);
-    const p1 = borderPoint(a, dx, dy);
-    const p2 = borderPoint(b, -dx, -dy);
-    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, mx: (p1.x + p2.x) / 2, my: (p1.y + p2.y) / 2 };
+    const acx = a.x + a.w / 2, acy = a.y + a.h / 2;
+    const bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+    const dx = bcx - acx, dy = bcy - acy;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    // 选择出口/入口边：水平分量更大 → 左右边；否则上下边
+    let p1, p2, c1, c2;
+    if (adx > ady) {
+      // 左右连接
+      p1 = dx >= 0 ? { x: a.x + a.w, y: acy } : { x: a.x, y: acy };
+      p2 = dx >= 0 ? { x: b.x, y: bcy } : { x: b.x + b.w, y: bcy };
+      const span = Math.max(40, Math.abs(p2.x - p1.x) * 0.5);
+      c1 = { x: p1.x + (dx >= 0 ? span : -span), y: p1.y };
+      c2 = { x: p2.x + (dx >= 0 ? -span : span), y: p2.y };
+    } else {
+      // 上下连接
+      p1 = dy >= 0 ? { x: acx, y: a.y + a.h } : { x: acx, y: a.y };
+      p2 = dy >= 0 ? { x: bcx, y: b.y } : { x: bcx, y: b.y + b.h };
+      const span = Math.max(40, Math.abs(p2.y - p1.y) * 0.5);
+      c1 = { x: p1.x, y: p1.y + (dy >= 0 ? span : -span) };
+      c2 = { x: p2.x, y: p2.y + (dy >= 0 ? -span : span) };
+    }
+    // 双向箭头（A→B 与 B→A 并存）时：只偏移控制点使曲线上下错开，
+    // 端点仍贴节点边（保持从上下左右 4 边连接）
+    const reverse = model.edges.find((x) => x !== e && x.from === e.to && x.to === e.from);
+    if (reverse) {
+      const off = 24;
+      if (adx > ady) {
+        // 水平连线：一条向上凸、一条向下凸
+        const dirY = (e.from < e.to ? 1 : -1);
+        c1.y += off * dirY; c2.y += off * dirY;
+      } else {
+        // 垂直连线：一条向左凸、一条向右凸
+        const dirX = (e.from < e.to ? 1 : -1);
+        c1.x += off * dirX; c2.x += off * dirX;
+      }
+    }
+    // 贝塞尔曲线中点（t=0.5）作为标签位置
+    const mx = (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8;
+    const my = (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8;
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y, mx: mx, my: my };
+  }
+
+  /** 贝塞尔路径 d 字符串 */
+  function bezierD(g) {
+    return 'M ' + num(g.x1) + ' ' + num(g.y1) +
+      ' C ' + num(g.c1x) + ' ' + num(g.c1y) + ' ' + num(g.c2x) + ' ' + num(g.c2y) + ' ' + num(g.x2) + ' ' + num(g.y2);
+  }
+
+  /** 贝塞尔曲线在终点的切线方向（用于箭头朝向） */
+  function bezierEndAngle(g) {
+    // 终点附近方向 ≈ (x2 - c2x, y2 - c2y)
+    return Math.atan2(g.y2 - g.c2y, g.x2 - g.c2x);
   }
 
   function arrowMarkup(e, g) {
-    const ang = Math.atan2(g.y2 - g.y1, g.x2 - g.x1);
+    const ang = bezierEndAngle(g);
     const a = Math.cos(ang), b = Math.sin(ang);
     const s = 11, wdt = 6;
     const tip = g.x2, tipy = g.y2;
@@ -331,10 +369,11 @@ ME.Canvas = (function () {
     if (!g) return '';
     const dash = (e.connector === '-.->' || e.connector === '-.-') ? ' stroke-dasharray="6 4"' : '';
     const w = e.connector === '==>' ? e.width + 1 : e.width;
+    const d = bezierD(g);
     // 透明加宽命中路径：扩大点击/双击热区（视觉上仍是细线）
-    return '<path class="fc-edge-hit" d="M ' + num(g.x1) + ' ' + num(g.y1) + ' L ' + num(g.x2) + ' ' + num(g.y2) +
+    return '<path class="fc-edge-hit" d="' + d +
       '" fill="none" stroke="transparent" stroke-width="16" stroke-linecap="round"' + dash + '/>' +
-      '<path class="fc-edge-path" d="M ' + num(g.x1) + ' ' + num(g.y1) + ' L ' + num(g.x2) + ' ' + num(g.y2) +
+      '<path class="fc-edge-path" d="' + d +
       '" fill="none" stroke="' + e.color + '" stroke-width="' + w + '"' + dash + '/>' +
       arrowMarkup(e, g) +
       (e.label ? '<text class="fc-edge-label" x="' + num(g.mx) + '" y="' + num(g.my) +
