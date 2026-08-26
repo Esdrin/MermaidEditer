@@ -313,38 +313,54 @@ ME.Canvas = (function () {
     let revDir = 0; // 双向时标签额外偏移方向（沿曲线错开方向，进一步拉开标签间距）
     if (reverse) {
       const off = 34;
+      // 方向基于源节点实际位置（避免字符串比较误判）：
+      // 水平连线 → y 更小的源节点对应曲线向下凸（标签偏下）；垂直连线 → x 更小的向左凸
       if (adx > ady) {
-        // 水平连线：一条向上凸、一条向下凸
-        revDir = (e.from < e.to ? 1 : -1);
+        revDir = (a.y < b.y || (a.y === b.y && a.x < b.x)) ? 1 : -1;
         c1.y += off * revDir; c2.y += off * revDir;
       } else {
-        // 垂直连线：一条向左凸、一条向右凸
-        revDir = (e.from < e.to ? 1 : -1);
+        revDir = (a.x < b.x || (a.x === b.x && a.y < b.y)) ? 1 : -1;
         c1.x += off * revDir; c2.x += off * revDir;
       }
     }
-    // 多线汇聚：指向同一目标节点的多条连线，标签按源节点顺序错开（避免标签重叠）
+    // 标签防重叠序号：双向线按 0/1 分开；多线汇聚也纳入
+    // 水平连线 → 标签垂直错开；垂直连线 → 标签水平错开
     let mergeIdx = 0;
-    const sameTarget = model.edges.filter((x) => x !== e && x.to === e.to);
-    if (sameTarget.length) {
-      const isVert = adx <= ady; // 本线是垂直连接（从目标上下边进入）
-      // 同向边判断：垂直连接都从上下边、水平连接都从左右边进入目标
-      const sameSide = sameTarget.filter((x) => {
-        const xn = model.nodes.find((n) => n.id === x.from);
-        if (!xn) return false;
-        const tdx = (b.x + b.w / 2) - (xn.x + xn.w / 2);
-        const tdy = (b.y + b.h / 2) - (xn.y + xn.h / 2);
-        const isVertX = Math.abs(tdx) <= Math.abs(tdy);
-        return isVertX === isVert; // 同为垂直或同为水平
-      });
-      // 按源节点 y（垂直）或 x（水平）排序，分配序号
-      const ordered = [e, ...sameSide].sort((p, q) => {
+    const isHoriz = adx > ady;
+    // 所有指向同一目标节点的连线（含反向线）都参与排序错开，避免同目标标签重叠
+    const others = model.edges.filter((x) => x !== e && (
+      x.to === e.to || (x.from === e.to && x.to === e.from)
+    ));
+    if (others.length) {
+      // 稳定序号：统计"在本线之前"的线数；最小者 = 0（不偏移），后续依次增大
+      const before = others.filter((p) => {
         const pn = model.nodes.find((n) => n.id === p.from);
-        const qn = model.nodes.find((n) => n.id === q.from);
-        if (!pn || !qn) return 0;
-        return isVert ? (pn.y - qn.y) : (pn.x - qn.x);
+        const qn = model.nodes.find((n) => n.id === e.from);
+        if (!pn || !qn) return false;
+        if (isHoriz) {
+          if (pn.y !== qn.y) return pn.y < qn.y;
+          if (pn.x !== qn.x) return pn.x < qn.x;
+          return p.from < e.from;
+        }
+        if (pn.x !== qn.x) return pn.x < qn.x;
+        if (pn.y !== qn.y) return pn.y < qn.y;
+        return p.from < e.from;
       });
-      mergeIdx = ordered.indexOf(e);
+      // 若本线是最小的那条（无人在前），mergeIdx=0 不偏移；否则按顺序 1、2…
+      const isSmallest = !others.some((p) => {
+        const pn = model.nodes.find((n) => n.id === p.from);
+        const qn = model.nodes.find((n) => n.id === e.from);
+        if (!pn || !qn) return false;
+        if (isHoriz) {
+          if (pn.y !== qn.y) return pn.y < qn.y;
+          if (pn.x !== qn.x) return pn.x < qn.x;
+          return p.from < e.from;
+        }
+        if (pn.x !== qn.x) return pn.x < qn.x;
+        if (pn.y !== qn.y) return pn.y < qn.y;
+        return p.from < e.from;
+      });
+      mergeIdx = isSmallest ? 0 : before.length + 1;
     }
     // 贝塞尔曲线中点（t=0.5）作为标签位置
     const mx = (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8;
@@ -412,28 +428,26 @@ ME.Canvas = (function () {
   function labelMarkup(e, g) {
     const tw = measureWidth(e.label) * 12 / FONT; // 按文字像素宽估算
     const w = Math.max(24, tw + 14);
-    // 双向箭头：标签再沿曲线错开方向额外偏移，文字越长偏移越大，彻底避免重叠
+    // 标签防重叠：双向箭头与多线汇聚都通过 mergeIdx 按序号错开
+    // 水平连线 → 标签垂直方向错开；垂直连线 → 标签水平方向错开
     let lx = g.mx, ly = g.my;
+    // 双向箭头：标签沿曲线错开方向（revDir）额外偏移——曲线已上下/左右分开，
+    // 标签再沿同方向推远，文字越长推得越远，彻底避免两条反向线标签重叠
     if (g.reverse && g.revDir) {
       if (Math.abs(g.x2 - g.x1) >= Math.abs(g.y2 - g.y1)) {
-        // 水平连线：垂直方向额外偏移（标签纵向叠放）
-        const extra = Math.min(34, 14 + tw / 4);
+        const extra = Math.min(40, 16 + tw / 3);
         ly = g.my + extra * g.revDir;
       } else {
-        // 垂直连线：水平方向额外偏移——需要超过半个标签宽度，避免宽标签横向重叠
-        const extra = Math.min(120, 30 + tw / 2);
+        const extra = Math.min(130, 34 + tw / 2);
         lx = g.mx + extra * g.revDir;
       }
     } else if (g.mergeIdx > 0) {
-      // 多线汇聚同一目标节点：按序号错开标签，避免同边进入的标签重叠
-      // 垂直连线（从目标上下边进入）→ 沿水平方向错开，步长需超过标签宽度一半
-      // 水平连线（从目标左右边进入）→ 沿垂直方向错开
-      if (Math.abs(g.x2 - g.x1) >= Math.abs(g.y2 - g.y1)) {
-        // 水平连线：标签沿垂直方向错开（纵向叠放，步长适中）
-        ly = g.my + g.mergeIdx * 24;
+      // 多线汇聚（非双向）：按序号错开，避免同边进入的标签重叠
+      const isHoriz = Math.abs(g.x2 - g.x1) >= Math.abs(g.y2 - g.y1);
+      if (isHoriz) {
+        ly = g.my + g.mergeIdx * 26;
       } else {
-        // 垂直连线：标签沿水平方向错开（横向并列，步长大避免宽标签重叠）
-        lx = g.mx + g.mergeIdx * (tw + 20);
+        lx = g.mx + g.mergeIdx * (tw + 40);
       }
     }
     return '<g class="fc-edge-labelg" transform="translate(' + num(lx) + ' ' + num(ly) + ')">' +
