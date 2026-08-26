@@ -601,7 +601,7 @@ ME.Canvas = (function () {
 
   function getZoomFactor() { return zoomFactor; }
 
-  /** 适应窗口：调整缩放使内容完整可见（不改变 pan 偏移） */
+  /** 适应窗口：调整缩放使内容完整可见，并把内容居中于可视区中心 */
   function fitView() {
     if (!svg) return;
     const bb = contentBounds();
@@ -617,7 +617,21 @@ ME.Canvas = (function () {
       f = Math.max(0.2, f);
     }
     zoomFactor = f;
-    rebuildViewport(0.5, 0.5, null, true);
+    // 以内容中心重设 viewBox（不是旧 viewBox 中心），保证 fit 后内容居中
+    const nw = vw / zoomFactor, nh = vh / zoomFactor;
+    const cx = bb.x + bb.w / 2, cy = bb.y + bb.h / 2;
+    viewBox = { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh };
+    panX = viewBox.x - base.vx;
+    panY = viewBox.y - base.vy;
+    if (svg) svg.setAttribute('viewBox', viewBox.x + ' ' + viewBox.y + ' ' + viewBox.w + ' ' + viewBox.h);
+    // 滚动可视区，让 svg 元素中心对准可视区中心（fit 后内容正中央）
+    if (ca) {
+      const sr = svg.getBoundingClientRect();
+      const cr = ca.getBoundingClientRect();
+      ca.scrollLeft = Math.max(0, ca.scrollLeft + (sr.left + sr.width / 2 - (cr.left + cr.width / 2)));
+      ca.scrollTop = Math.max(0, ca.scrollTop + (sr.top + sr.height / 2 - (cr.top + cr.height / 2)));
+    }
+    if (ME.app && ME.app.updateZoomUI) ME.app.updateZoomUI(zoomFactor);
   }
 
   /** 按当前 zoomFactor 重算 viewBox：锚点（ratioX,ratioY 相对旧视口）处的内容坐标保持不动 */

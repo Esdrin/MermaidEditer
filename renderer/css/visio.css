@@ -328,7 +328,7 @@ body.layout-code #resizer-right { display: none !important; }
   border-radius: 2px;
   box-shadow: 0 8px 28px rgba(31, 35, 40, .12), 0 1px 4px rgba(31, 35, 40, .07);
   padding: 20px 24px;
-  display: flex; justify-content: center; align-items: flex-start;
+  display: flex; justify-content: center; align-items: center;
   transform-origin: center top;
   transition: transform .12s ease;
   /* 画布铺满整个可视区域（100% 窗口大小）；内容超出时页面自然扩展、由 canvas-area 滚动查看 */
