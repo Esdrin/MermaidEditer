@@ -662,6 +662,8 @@ body.connect-mode .fc-node { cursor: crosshair; }
 .fc-edge { cursor: pointer; }
 .fc-edge-hit { pointer-events: stroke; cursor: pointer; }
 .fc-edge.sel .fc-edge-path { stroke: #18a058 !important; stroke-width: 2.6px !important; }
+.fc-edge-labelg { pointer-events: none; }
+.fc-edge-label-bg { fill: rgba(255, 255, 255, .92); stroke: #E0E0E6; stroke-width: 1; }
 .fc-edge-label { user-select: none; pointer-events: none; }
 .fc-temp-edge { pointer-events: none; }
 

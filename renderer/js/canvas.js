@@ -311,7 +311,7 @@ ME.Canvas = (function () {
     // 端点仍贴节点边（保持从上下左右 4 边连接）
     const reverse = model.edges.find((x) => x !== e && x.from === e.to && x.to === e.from);
     if (reverse) {
-      const off = 24;
+      const off = 34;
       if (adx > ady) {
         // 水平连线：一条向上凸、一条向下凸
         const dirY = (e.from < e.to ? 1 : -1);
@@ -325,7 +325,7 @@ ME.Canvas = (function () {
     // 贝塞尔曲线中点（t=0.5）作为标签位置
     const mx = (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8;
     const my = (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8;
-    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y, mx: mx, my: my };
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y, mx: mx, my: my, reverse: !!reverse };
   }
 
   /** 贝塞尔路径 d 字符串 */
@@ -376,9 +376,17 @@ ME.Canvas = (function () {
       '<path class="fc-edge-path" d="' + d +
       '" fill="none" stroke="' + e.color + '" stroke-width="' + w + '"' + dash + '/>' +
       arrowMarkup(e, g) +
-      (e.label ? '<text class="fc-edge-label" x="' + num(g.mx) + '" y="' + num(g.my) +
-        '" text-anchor="middle" dominant-baseline="central" font-size="12" stroke="#ffffff" stroke-width="4" paint-order="stroke" fill="' + e.color + '">' +
-        escXml(e.label) + '</text>' : '');
+      (e.label ? labelMarkup(e, g) : '');
+  }
+
+  /** 连线标签：白色圆角背景 + 文字（背景按文字宽度适配，避免双向箭头文字相互遮挡） */
+  function labelMarkup(e, g) {
+    const tw = measureWidth(e.label) * 12 / FONT; // 按文字像素宽估算
+    const w = Math.max(24, tw + 14);
+    return '<g class="fc-edge-labelg" transform="translate(' + num(g.mx) + ' ' + num(g.my) + ')">' +
+      '<rect class="fc-edge-label-bg" x="' + num(-w / 2) + '" y="-10" width="' + num(w) + '" height="20" rx="3"/>' +
+      '<text class="fc-edge-label" text-anchor="middle" dominant-baseline="central" font-size="12" fill="' + e.color + '">' +
+      escXml(e.label) + '</text></g>';
   }
 
   /* ---------------- 渲染 ---------------- */
