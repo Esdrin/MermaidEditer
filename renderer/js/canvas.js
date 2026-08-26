@@ -620,13 +620,14 @@ ME.Canvas = (function () {
     if (!svg) return;
     const bb = contentBounds();
     if (!bb) return;
-    const rect = svg.parentElement ? svg.parentElement.getBoundingClientRect() : null;
+    // 用固定可视区（canvas-area）作为适配目标，而不是 svg 父元素
+    //（父元素会随内容扩展，导致内容大时永远算不出缩放）
+    const ca = document.getElementById('canvas-area');
     const base = baseSize(bb);
     const vw = base.vw, vh = base.vh;
     let f = 1;
-    if (rect && rect.width > 0 && rect.height > 0) {
-      // svg 显示尺寸 = viewBox.w/h（width/height 属性），容器为 #page（canvas 模式 padding 10px）
-      f = Math.min((rect.width - 20) / vw, (rect.height - 20) / vh, 3);
+    if (ca && ca.clientWidth > 0 && ca.clientHeight > 0) {
+      f = Math.min((ca.clientWidth - 24) / vw, (ca.clientHeight - 24) / vh, 3);
       f = Math.max(0.2, f);
     }
     zoomFactor = f;
