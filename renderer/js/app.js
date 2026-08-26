@@ -564,6 +564,7 @@ ME.app = (function () {
     const r = await window.api.openFile();
     if (r.canceled) return;
     currentPath = r.path;
+    requestFitOnOpen();
     ME.Editor.setSource(r.content);
     setDirty(false);
     addRecent(r.path);
@@ -644,6 +645,7 @@ ME.app = (function () {
       return;
     }
     currentPath = r.path;
+    requestFitOnOpen();
     ME.Editor.setSource(r.content);
     setDirty(false);
     addRecent(r.path);
@@ -761,6 +763,12 @@ ME.app = (function () {
   }
 
   /* ---------------- 编辑模式：源码 / 自由画布 ---------------- */
+  /** 打开文件时调用：让即将导入的模块（画布或源码渲染）在内容就绪后强制适应窗口 */
+  function requestFitOnOpen() {
+    if (ME.Canvas && ME.Canvas.fitOnImport) ME.Canvas.fitOnImport();
+    if (ME.Renderer && ME.Renderer.fitOnRender) ME.Renderer.fitOnRender();
+  }
+
   function setMode(m) {
     if (m !== 'source' && m !== 'canvas') return;
     mode = m;

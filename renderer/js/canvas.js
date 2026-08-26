@@ -37,6 +37,7 @@ ME.Canvas = (function () {
   let importTimer = null;
   let selfEdit = false;       // 源码写入来自画布自身时跳过重导入
   let editInput = null;
+  let fitOnImport = false;    // 打开文件时置位：下次 importFromSource 后强制 fit 适应窗口
 
   function num(v) { return Math.round(v * 100) / 100; }
   function escXml(s) {
@@ -1298,8 +1299,10 @@ ME.Canvas = (function () {
     selNodes.clear(); selEdgeId = null;
     render();
     ME.Props.showCanvasDiagram();
-    // 大流程自适应：内容显著大于可视区时自动缩小到完整可见
-    autoFitIfOversized();
+    // 打开文件时强制适应窗口（fitOnImport 由 app.js 打开文件时置位）；
+    // 否则仅内容超出可视区且未缩放时自动缩小
+    if (fitOnImport) { fitOnImport = false; fitView(); }
+    else autoFitIfOversized();
     ME.app.setStatus('自由画布已同步源码', 'ok');
   }
 
@@ -1463,6 +1466,8 @@ ME.Canvas = (function () {
     setZoomFactor: setZoomFactor,
     getZoomFactor: getZoomFactor,
     fitView: fitView,
+    /** 打开文件时调用：下次导入后强制适应窗口（无论内容大小/之前缩放状态） */
+    fitOnImport: () => { fitOnImport = true; },
     alignNodes: alignNodes,
   };
 })();

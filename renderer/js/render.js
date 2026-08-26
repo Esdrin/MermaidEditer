@@ -13,6 +13,7 @@ ME.Renderer = (function () {
   let timer = null;
   let selRef = null; // {kind:'node',name} | {kind:'edge',idx}
   let rawW = 0, rawH = 0; // 源码模式 svg 的原始内容尺寸（viewBox 像素，缩放基准）
+  let fitOnRender = false; // 打开文件时置位：下次渲染后强制 zoomFit 适应窗口
 
   const cfg = {
     theme: 'default',
@@ -290,8 +291,10 @@ ME.Renderer = (function () {
       if (!e) e = diagram.querySelectorAll('.edgePaths > path').length;
       // 渲染重建了 svg，重新应用当前缩放（缩放写在 svg 尺寸上，不重建即丢失）
       if (Math.abs(zoom - 1) >= 0.01) setZoom(zoom);
+      // 打开文件时强制适应窗口（fitOnRender 由 app.js 打开文件时置位）
+      if (fitOnRender) { fitOnRender = false; zoomFit(); }
       // 大流程自适应：内容超出可视区时自动缩放适应窗口，避免画布太小看不到全貌
-      autoFitIfOversized();
+      else autoFitIfOversized();
       ME.app.setStatus('渲染成功', 'ok');
       ME.app.setCount(n, e);
       ME.app.syncUiChecks();
@@ -551,6 +554,8 @@ ME.Renderer = (function () {
     zoom100: zoom100,
     zoomFit: zoomFit,
     getZoom: getZoom,
+    /** 打开文件时调用：下次渲染后强制适应窗口（无论内容大小/之前缩放状态） */
+    fitOnRender: () => { fitOnRender = true; },
     layoutFlow: layoutFlow,
     getSvg: getSvg,
     getCfg: getCfg,
