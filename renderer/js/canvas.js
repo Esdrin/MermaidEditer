@@ -310,22 +310,23 @@ ME.Canvas = (function () {
     // 双向箭头（A→B 与 B→A 并存）时：只偏移控制点使曲线上下错开，
     // 端点仍贴节点边（保持从上下左右 4 边连接）
     const reverse = model.edges.find((x) => x !== e && x.from === e.to && x.to === e.from);
+    let revDir = 0; // 双向时标签额外偏移方向（沿曲线错开方向，进一步拉开标签间距）
     if (reverse) {
       const off = 34;
       if (adx > ady) {
         // 水平连线：一条向上凸、一条向下凸
-        const dirY = (e.from < e.to ? 1 : -1);
-        c1.y += off * dirY; c2.y += off * dirY;
+        revDir = (e.from < e.to ? 1 : -1);
+        c1.y += off * revDir; c2.y += off * revDir;
       } else {
         // 垂直连线：一条向左凸、一条向右凸
-        const dirX = (e.from < e.to ? 1 : -1);
-        c1.x += off * dirX; c2.x += off * dirX;
+        revDir = (e.from < e.to ? 1 : -1);
+        c1.x += off * revDir; c2.x += off * revDir;
       }
     }
     // 贝塞尔曲线中点（t=0.5）作为标签位置
     const mx = (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8;
     const my = (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8;
-    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y, mx: mx, my: my, reverse: !!reverse };
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, c1x: c1.x, c1y: c1.y, c2x: c2.x, c2y: c2.y, mx: mx, my: my, reverse: !!reverse, revDir: revDir };
   }
 
   /** 贝塞尔路径 d 字符串 */
@@ -383,7 +384,20 @@ ME.Canvas = (function () {
   function labelMarkup(e, g) {
     const tw = measureWidth(e.label) * 12 / FONT; // 按文字像素宽估算
     const w = Math.max(24, tw + 14);
-    return '<g class="fc-edge-labelg" transform="translate(' + num(g.mx) + ' ' + num(g.my) + ')">' +
+    // 双向箭头：标签再沿曲线错开方向额外偏移，文字越长偏移越大，彻底避免重叠
+    let lx = g.mx, ly = g.my;
+    if (g.reverse && g.revDir) {
+      if (Math.abs(g.x2 - g.x1) >= Math.abs(g.y2 - g.y1)) {
+        // 水平连线：垂直方向额外偏移（标签纵向叠放）
+        const extra = Math.min(34, 14 + tw / 4);
+        ly = g.my + extra * g.revDir;
+      } else {
+        // 垂直连线：水平方向额外偏移——需要超过半个标签宽度，避免宽标签横向重叠
+        const extra = Math.min(120, 30 + tw / 2);
+        lx = g.mx + extra * g.revDir;
+      }
+    }
+    return '<g class="fc-edge-labelg" transform="translate(' + num(lx) + ' ' + num(ly) + ')">' +
       '<rect class="fc-edge-label-bg" x="' + num(-w / 2) + '" y="-10" width="' + num(w) + '" height="20" rx="3"/>' +
       '<text class="fc-edge-label" text-anchor="middle" dominant-baseline="central" font-size="12" fill="' + e.color + '">' +
       escXml(e.label) + '</text></g>';
