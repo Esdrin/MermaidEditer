@@ -612,6 +612,31 @@ ME.Renderer = (function () {
     ME.app.updateZoomUI(zoom);
   }
 
+  /** 以屏幕坐标 (clientX,clientY) 为锚点缩放（与自由画布滚轮行为一致）：锚点处内容保持不动 */
+  function zoomAt(clientX, clientY, factor) {
+    const svg = diagram.querySelector('svg');
+    if (!svg || rawW <= 0 || rawH <= 0) return;
+    const ca = document.getElementById('canvas-area');
+    if (!ca) return;
+    const oldSr = svg.getBoundingClientRect();
+    if (oldSr.width <= 0 || oldSr.height <= 0) return;
+    // 鼠标下的内容坐标（相对 svg 内容原点；getBoundingClientRect 已含滚动偏移）
+    const contentX = (clientX - oldSr.left) / zoom;
+    const contentY = (clientY - oldSr.top) / zoom;
+    const nf = Math.min(3, Math.max(ZOOM_MIN, zoom * factor));
+    if (nf === zoom) return;
+    const sl0 = ca.scrollLeft, st0 = ca.scrollTop;
+    zoom = nf;
+    svg.setAttribute('width', Math.round(rawW * zoom));
+    svg.setAttribute('height', Math.round(rawH * zoom));
+    // 缩放后 svg 文档位置可能因居中布局变化：读新 rect（此时滚动未变），
+    // 目标锚点不动：clientX = newSr.left + scrollLeft0 + contentX*zoom - scrollLeft1
+    const newSr = svg.getBoundingClientRect();
+    ca.scrollLeft = newSr.left + sl0 + contentX * zoom - clientX;
+    ca.scrollTop = newSr.top + st0 + contentY * zoom - clientY;
+    ME.app.updateZoomUI(zoom);
+  }
+
   function zoomIn() { setZoom(zoom + 0.1); }
   function zoomOut() { setZoom(zoom - 0.1); }
   function zoom100() { setZoom(1); }
@@ -722,6 +747,7 @@ ME.Renderer = (function () {
     renderNow: renderNow,
     scheduleRender: scheduleRender,
     setZoom: setZoom,
+    zoomAt: zoomAt,
     zoomIn: zoomIn,
     zoomOut: zoomOut,
     zoom100: zoom100,

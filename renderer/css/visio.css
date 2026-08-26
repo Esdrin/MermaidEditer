@@ -298,6 +298,7 @@ body.layout-code #resizer-right { display: none !important; }
   background-color: #F5F5F7;
   transition: background-color .2s ease;
 }
+#canvas-area.panning-cursor { cursor: grabbing; }
 /* 点阵底纹（draw.io 风格，默认开启，网格按钮可切换；local 让点阵随画布滚动） */
 #canvas-area.show-dots {
   background-color: #F5F5F7;

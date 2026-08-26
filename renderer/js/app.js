@@ -732,11 +732,27 @@ ME.app = (function () {
     canvasArea.addEventListener('wheel', (e) => {
       // 画布模式：滚轮缩放由 svg 的 onWheel 处理
       if (ME.Canvas && ME.Canvas.active) return;
-      if (e.ctrlKey) {
-        e.preventDefault();
-        if (e.deltaY < 0) ME.Renderer.zoomIn(); else ME.Renderer.zoomOut();
-      }
+      // 源码模式：滚轮直接缩放（以鼠标为锚点），与自由画布一致
+      e.preventDefault();
+      ME.Renderer.zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.12 : 1 / 1.12);
     }, { passive: false });
+    // 源码模式：中键拖拽平移画布（与自由画布一致）
+    let srcPan = null;
+    canvasArea.addEventListener('mousedown', (e) => {
+      if (ME.Canvas && ME.Canvas.active) return;
+      if (e.button !== 1) return;
+      e.preventDefault();
+      srcPan = { sx: e.clientX, sy: e.clientY, sl: canvasArea.scrollLeft, st: canvasArea.scrollTop };
+      canvasArea.classList.add('panning-cursor');
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!srcPan) return;
+      canvasArea.scrollLeft = srcPan.sl - (e.clientX - srcPan.sx);
+      canvasArea.scrollTop = srcPan.st - (e.clientY - srcPan.sy);
+    });
+    document.addEventListener('mouseup', () => {
+      if (srcPan) { srcPan = null; canvasArea.classList.remove('panning-cursor'); }
+    });
   }
 
   /** 缩放快捷键：画布模式缩放画布，源码模式缩放页面（fit=适应窗口） */
