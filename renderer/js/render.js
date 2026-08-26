@@ -12,6 +12,7 @@ ME.Renderer = (function () {
   let zoom = 1;
   let timer = null;
   let selRef = null; // {kind:'node',name} | {kind:'edge',idx}
+  let rawW = 0, rawH = 0; // 源码模式 svg 的原始内容尺寸（viewBox 像素，缩放基准）
 
   const cfg = {
     theme: 'default',
@@ -267,13 +268,15 @@ ME.Renderer = (function () {
       const res = await window.mermaid.render(id, src);
       diagram.innerHTML = res.svg;
       // mermaid 默认输出 width="100%" + style="max-width:…"，会把画布压缩到容器宽度；
-      // 改为按 viewBox 原始像素尺寸显示，内容超出时由 canvas-area 滚动查看
+      // 改为按 viewBox 原始像素尺寸显示（缩放时直接改 svg width/height，布局同步，滚动条正常）
       const svgEl = diagram.querySelector('svg');
       if (svgEl) {
         const vb = svgEl.getAttribute('viewBox');
         if (vb) {
           const parts = vb.trim().split(/\s+/).map(parseFloat);
           if (parts.length >= 4 && parts[2] > 0 && parts[3] > 0) {
+            rawW = parts[2];
+            rawH = parts[3];
             svgEl.setAttribute('width', Math.ceil(parts[2]));
             svgEl.setAttribute('height', Math.ceil(parts[3]));
           }
@@ -285,6 +288,8 @@ ME.Renderer = (function () {
       const n = diagram.querySelectorAll('g.node').length;
       let e = diagram.querySelectorAll('.edgePath').length;
       if (!e) e = diagram.querySelectorAll('.edgePaths > path').length;
+      // 渲染重建了 svg，重新应用当前缩放（缩放写在 svg 尺寸上，不重建即丢失）
+      if (Math.abs(zoom - 1) >= 0.01) setZoom(zoom);
       // 大流程自适应：内容超出可视区时自动缩放适应窗口，避免画布太小看不到全貌
       autoFitIfOversized();
       ME.app.setStatus('渲染成功', 'ok');
@@ -419,9 +424,15 @@ ME.Renderer = (function () {
   }
 
   /* ---- 缩放 ---- */
+  const ZOOM_MIN = 0.05; // 源码模式大图（如超宽横向布局）需要缩到很小才能完整可见
+  /** 源码模式缩放：直接改 svg width/height（矢量缩放），布局尺寸同步 → 滚动条范围 = 实际显示范围 */
   function setZoom(z) {
-    zoom = Math.min(3, Math.max(0.25, z));
-    page.style.transform = 'scale(' + zoom + ')';
+    zoom = Math.min(3, Math.max(ZOOM_MIN, z));
+    const svg = diagram.querySelector('svg');
+    if (svg && rawW > 0 && rawH > 0) {
+      svg.setAttribute('width', Math.round(rawW * zoom));
+      svg.setAttribute('height', Math.round(rawH * zoom));
+    }
     ME.app.updateZoomUI(zoom);
   }
 
@@ -477,11 +488,12 @@ ME.Renderer = (function () {
     const svg = diagram.querySelector('svg');
     if (!svg) return;
     const bb = svg.getBBox();
-    const wrap = document.getElementById('page-wrap');
-    const s = Math.min((wrap.clientWidth - 90) / Math.max(bb.width, 1), (wrap.clientHeight - 90) / Math.max(bb.height, 1), 2);
-    setZoom(Math.max(0.25, s));
-    wrap.scrollTop = 0;
-    wrap.scrollLeft = 0;
+    const ca = document.getElementById('canvas-area');
+    const cw = ca ? ca.clientWidth : window.innerWidth;
+    const ch = ca ? ca.clientHeight : window.innerHeight;
+    const s = Math.min((cw - 40) / Math.max(bb.width, 1), (ch - 40) / Math.max(bb.height, 1), 2);
+    setZoom(Math.max(ZOOM_MIN, s));
+    if (ca) { ca.scrollTop = 0; ca.scrollLeft = 0; }
   }
 
   function getSvg() { return diagram.querySelector('svg'); }
@@ -513,12 +525,12 @@ ME.Renderer = (function () {
   function autoFitIfOversized() {
     const svgEl = diagram.querySelector('svg');
     if (!svgEl) return;
-    const wrap = document.getElementById('page-wrap');
-    if (!wrap) return;
+    const ca = document.getElementById('canvas-area');
+    if (!ca) return;
     const bb = svgEl.getBBox();
     if (!bb || !bb.width || !bb.height) return;
     // 内容显著大于可视区（超出 1.5 倍）且当前未缩放时，自动 fit
-    if (bb.width > wrap.clientWidth * 1.5 || bb.height > wrap.clientHeight * 1.5) {
+    if (bb.width > ca.clientWidth * 1.5 || bb.height > ca.clientHeight * 1.5) {
       if (Math.abs(zoom - 1) < 0.01) zoomFit();
     }
   }

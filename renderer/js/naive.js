@@ -268,7 +268,7 @@ ME.Naive = (function () {
       const self = this;
       return h(N.NSlider, {
         value: self.val,
-        min: 25, max: 300, step: 5,
+        min: 5, max: 300, step: 5,
         'on-update:value': self.onUpdate,
         style: { width: '110px' },
       });

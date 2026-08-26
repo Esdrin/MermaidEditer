@@ -1367,6 +1367,10 @@ ME.Canvas = (function () {
     active = true;
     document.body.classList.add('canvas-mode');
     diagram.classList.add('fc');
+    // 清掉源码模式遗留的页面缩放（旧版 #page transform），避免画布被双重缩放：
+    // 画布缩放由 viewBox 控制，page 不应再叠加 transform
+    const pageEl = document.getElementById('page');
+    if (pageEl) pageEl.style.transform = '';
     ME.Props.showCanvasDiagram();
     importFromSource();
     // 进入画布模式：把状态栏缩放滑块同步到画布缩放
