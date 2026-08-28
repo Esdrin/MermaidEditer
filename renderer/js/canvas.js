@@ -1359,6 +1359,7 @@ ME.Canvas = (function () {
     });
     if (model.nodes.length) {
       lines.push('%% MermaidEditor FreeView');
+      lines.push('%% https://github.com/Esdrin/MermaidEditer');
       model.nodes.forEach((n) => lines.push('%% pos:' + n.name + ':' + Math.round(n.x) + ',' + Math.round(n.y)));
     }
     selfEdit = true;
